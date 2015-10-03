@@ -1,4 +1,4 @@
-Parse.initialize("ApplicationID", "ClientKey");
+Parse.initialize("$PARSE_APPLICATION_ID", "$PARSE_JAVASCRIPT_KEY");
 
 angular.module('todo', ['ionic'])
 /**
@@ -37,6 +37,23 @@ angular.module('todo', ['ionic'])
 .factory('Tasks', function() {
   var Task = Parse.Object.extend("Task");
   return {
+    all: function() {
+      var Task = Parse.Object.extend("Task");
+      var query = new Parse.Query(Task);
+
+      query.find({
+        success: function(results) {
+          $scope.$apply(function() {
+            $scope.tasks = results.map(function(obj) {
+              return {title: obj.get("title"), parseObject: obj};
+            });
+          });
+        },
+        error: function(error) {
+          alert("Error: " + error.code + " " + error.message);
+        }
+      });
+    },
     save: function(task) {
 
       var taskObject = null;
@@ -70,25 +87,7 @@ angular.module('todo', ['ionic'])
   $scope.shouldShowReorder = false;
   $scope.listCanSwipe = true;
 
-  $scope.allTasks = function() {
-    var Task = Parse.Object.extend("Task");
-    var query = new Parse.Query(Task);
-
-    query.find({
-      success: function(results) {
-        $scope.$apply(function() {
-          $scope.tasks = results.map(function(obj) {
-            return {title: obj.get("title"), parseObject: obj};
-          });
-        });
-      },
-      error: function(error) {
-        alert("Error: " + error.code + " " + error.message);
-      }
-    });
-  };
-
-  $scope.tasks = $scope.allTasks();
+  $scope.tasks = Tasks.all();
 
   $scope.$watch('tasks', function(newVal, oldVal){
     console.log('changed');
@@ -148,7 +147,7 @@ angular.module('todo', ['ionic'])
     Projects.save($scope.projects);
 
     Tasks.save(task);
-    $scope.allTasks();
+    Tasks.all();
   };
 
   $scope.newTask = function() {
@@ -163,7 +162,7 @@ angular.module('todo', ['ionic'])
 
   $scope.delete = function(task) {
     Tasks.delete(task);
-    $scope.allTasks();
+    Tasks.all();
   }
 
   $scope.closeNewTask = function() {

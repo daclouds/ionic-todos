@@ -38,21 +38,9 @@ angular.module('todo', ['ionic'])
   var Task = Parse.Object.extend("Task");
   return {
     all: function() {
-      var Task = Parse.Object.extend("Task");
-      var query = new Parse.Query(Task);
-
-      query.find({
-        success: function(results) {
-          $scope.$apply(function() {
-            $scope.tasks = results.map(function(obj) {
-              return {title: obj.get("title"), parseObject: obj};
-            });
-          });
-        },
-        error: function(error) {
-          alert("Error: " + error.code + " " + error.message);
-        }
-      });
+      console.log('loading...');
+      var tasks = window.localStorage.getItem('tasks');
+      return angular.fromJson(tasks);
     },
     save: function(task) {
 
@@ -83,18 +71,8 @@ angular.module('todo', ['ionic'])
 
 .controller('TodoCtrl', function($scope, $timeout, $ionicModal, Projects, Tasks, $ionicSideMenuDelegate, $ionicListDelegate) {
 
-  $scope.shouldShowDelete = false;
-  $scope.shouldShowReorder = false;
-  $scope.listCanSwipe = true;
-
-  $scope.tasks = Tasks.all();
-
-  $scope.$watch('tasks', function(newVal, oldVal){
-    console.log('changed');
-  }, true);
-
   angular.element(document).ready(function () {
-
+    $scope.tasks = Tasks.all();
   });
 
   // A utility function for creating a new project
@@ -127,6 +105,54 @@ angular.module('todo', ['ionic'])
     $ionicSideMenuDelegate.toggleLeft(false);
   };
 
+  $scope.toggleProjects = function() {
+    $ionicSideMenuDelegate.toggleLeft();
+  };
+
+  // Try to create the first project, make sure to defer
+  // this by using $timeout so everything is initialized
+  // properly
+  $timeout(function() {
+    if($scope.projects.length == 0) {
+      while(true) {
+        var projectTitle = prompt('Your first project title:');
+        if(projectTitle) {
+          createProject(projectTitle);
+          break;
+        }
+      }
+    }
+  });
+
+})
+.controller('TodoListCtrl', function($scope, $interval, $ionicModal, Projects, Tasks, $ionicListDelegate) {
+  $scope.shouldShowDelete = false;
+  $scope.shouldShowReorder = false;
+  $scope.listCanSwipe = true;
+
+  $scope.allTasks = function() {
+    var Task = Parse.Object.extend("Task");
+    var query = new Parse.Query(Task);
+
+    query.find({
+      success: function(results) {
+        $scope.$apply(function() {
+          $scope.tasks = results.map(function(obj) {
+            return {title: obj.get("title"), parseObject: obj};
+          });
+        });
+      },
+      error: function(error) {
+        alert("Error: " + error.code + " " + error.message);
+      }
+    });
+  };
+  $scope.tasks = $scope.allTasks();
+
+  $scope.$watch('tasks', function(newVal, oldVal){
+    console.log('changed');
+  }, true);
+
   // Create our modal
   $ionicModal.fromTemplateUrl('new-task.html', function(modal) {
     $scope.taskModal = modal;
@@ -147,7 +173,7 @@ angular.module('todo', ['ionic'])
     Projects.save($scope.projects);
 
     Tasks.save(task);
-    Tasks.all();
+    $scope.allTasks();
   };
 
   $scope.newTask = function() {
@@ -162,30 +188,20 @@ angular.module('todo', ['ionic'])
 
   $scope.delete = function(task) {
     Tasks.delete(task);
-    Tasks.all();
+    $scope.allTasks();
   }
 
   $scope.closeNewTask = function() {
     $scope.taskModal.hide();
   }
 
-  $scope.toggleProjects = function() {
-    $ionicSideMenuDelegate.toggleLeft();
-  };
+  $interval(function() {
 
-  // Try to create the first project, make sure to defer
-  // this by using $timeout so everything is initialized
-  // properly
-  $timeout(function() {
-    if($scope.projects.length == 0) {
-      while(true) {
-        var projectTitle = prompt('Your first project title:');
-        if(projectTitle) {
-          createProject(projectTitle);
-          break;
-        }
-      }
+    if($scope.tasks != undefined && $scope.tasks.length > 0) {
+      window.localStorage.setItem('tasks', JSON.stringify($scope.tasks));
+      // console.log(window.localStorage.getItem('tasks'));
+      // console.log('saving...');
     }
-  });
+  }, 60 * 1000);
 
 });
